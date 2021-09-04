@@ -509,24 +509,17 @@ paths:
           description: Searches for exact username with no wildcard
   /lockCategories:
     get:
-      summary: Get lock categories on a video
-      tags:
-        - nouserid
+      summary: Your GET endpoint
+      tags: []
+      responses: {}
+      operationId: lockCategories
+    post:
+      summary: ''
+      operationId: postLockCategories
       responses:
         '200':
           description: OK
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/videoLock'
-        '400':
-          description: Bad Request
-        '404':
-          description: Not Found
-      operationId: getLockCategories
-      description: Get lock categories given videoID
-      parameters:
-        - $ref: '#/components/parameters/requiredVideoID'
+      description: 'Create a category lock on the video, disallowing further submissions for that category'
   '/lockCategories/{sha256HashPrefix}':
     get:
       summary: Get lock categories by hash
@@ -691,6 +684,144 @@ paths:
           description: Not Found
       operationId: getStatus
       description: Get status and stats of the server
+  /getTopUsers:
+    get:
+      summary: Get top users
+      tags:
+        - stats
+        - nouserid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userNames:
+                    type: array
+                    items:
+                      type: string
+                  viewCounts:
+                    type: array
+                    items:
+                      type: integer
+                  totalSubmissions:
+                    type: array
+                    items:
+                      type: integer
+                  minutesSaved:
+                    type: array
+                    items:
+                      type: number
+                      format: float
+        '400':
+          description: Bad Request
+      operationId: getTopUsers
+      description: Get top submitters
+      parameters:
+        - schema:
+            type: integer
+            enum:
+              - 0
+              - 1
+              - 2
+          in: query
+          name: sortType
+          description: '0 for by minutes saved, 1 for by view count, 2 for by total submissions'
+          required: true
+  /getTotalStats:
+    get:
+      summary: Get total stats
+      tags:
+        - stats
+        - nouserid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userCount:
+                    oneOf:
+                      - type: integer
+                        properties: {}
+                        description: Only if countContributingUsers was true
+                      - type: 'null'
+                        properties: {}
+                    description: ''
+                  activeUsers:
+                    type: integer
+                    description: Sum of public install stats
+                  apiUsers:
+                    type: integer
+                    description: '48-hour active API users https://github.com/ajayyy/PrivacyUserCount'
+                  viewCount:
+                    type: integer
+                    description: Total reported segment views
+                  totalSubmissions:
+                    type: integer
+                    description: Number of total submissions
+                  minutesSaved:
+                    type: number
+                    format: float
+                    description: Total number of minutes saved
+      operationId: getTotalStats
+      description: ''
+      parameters:
+        - schema:
+            type: boolean
+            default: 'false '
+          in: query
+          name: countContributingUsers
+          description: Include contributing users
+  /getDaysSavedFormatted:
+    get:
+      summary: Get total days saved
+      tags:
+        - nouserid
+        - stats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  daysSaved:
+                    type: number
+                    format: float
+                    description: Days saved (2 decimal places)
+      operationId: getDaysSavedFormatted
+      description: Get days saved by all skips
+  /isUserVIP:
+    get:
+      summary: Get if user is VIP
+      tags:
+        - normal
+        - vip
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hashedUserID:
+                    $ref: '#/components/schemas/publicUserID'
+                  vip:
+                    type: boolean
+                    description: if user is VIP
+        '400':
+          description: Bad Request
+      operationId: getIsUserVIP
+      description: Check if user is VIP
+      security:
+        - privateUserID: []
 components:
   schemas:
     skipSegment:
@@ -994,11 +1125,11 @@ components:
           description: ms between startTime and sending response
           example: 1
   securitySchemes:
-    supersecret:
+    privateUserID:
       name: userID
       type: apiKey
       in: query
-    superdupersecret:
+    privateAdminUserID:
       name: adminUserID
       type: apiKey
       in: query
@@ -1120,3 +1251,4 @@ components:
       schema:
         type: string
       description: First 4-32 characters of the has of the YouTube videoID
+  responses: {}

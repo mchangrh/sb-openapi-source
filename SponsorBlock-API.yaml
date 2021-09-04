@@ -16,7 +16,7 @@ servers:
 paths:
   /addUserAsVIP:
     post:
-      summary: ''
+      summary: Add user as VIP
       operationId: postadduserasvip
       responses:
         '200':
@@ -45,7 +45,7 @@ paths:
           description: enable or disable user
   /skipSegments:
     get:
-      summary: Your GET endpoint
+      summary: Get Skip Segments
       tags: []
       responses:
         '200':
@@ -53,9 +53,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/paramSkipSegments'
-        '400':
-          description: Bad Request
+                type: array
+                minItems: 1
+                uniqueItems: true
+                items:
+                  $ref: '#/components/schemas/skipSegment'
         '404':
           description: Not Found
       operationId: getskipsegments
@@ -69,20 +71,68 @@ paths:
         - $ref: '#/components/parameters/requiredSegment'
         - $ref: '#/components/parameters/requiredSegments'
         - $ref: '#/components/parameters/service'
+    parameters: []
+  '/skipSegments/{sha256HashPrefix}':
+    get:
+      summary: Get Skip Segments (Extra Privacy)
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/hashSkipSegment'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      operationId: getSkipSegmentsByHash
+      description: Get skip segments with extra privacy
+      parameters:
+        - schema:
+            type: string
+            minLength: 4
+            pattern: '[A-Fa-f0-9]'
+          in: query
+          name: prefix
+          description: can be used instead of path
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/requiredSegment'
+        - $ref: '#/components/parameters/requiredSegments'
+        - $ref: '#/components/parameters/actionType'
+        - $ref: '#/components/parameters/actionTypes'
+        - $ref: '#/components/parameters/service'
+    parameters:
+      - schema:
+          type: string
+        name: sha256HashPrefix
+        in: path
+        description: hash of the YouTube videoID
 components:
   schemas:
     skipSegment:
-      title: skipSegment
       type: object
+      title: skipSegment
       properties:
         segment:
           type: array
           maxItems: 2
           minItems: 2
+          description: start and end time in seconds
           items:
             type: integer
         UUID:
           $ref: '#/components/schemas/segmentUUID'
+        category:
+          $ref: '#/components/schemas/category'
+        videoDuration:
+          type: number
+          minimum: 0
+          description: Duration of video at time of submission
     segmentUUID:
       type: string
       title: segmentUUID
@@ -90,15 +140,18 @@ components:
       examples:
         - string
       format: segmentUUID
+      description: UUID of segment
     publicUserID:
       type: string
       title: publicUserID
       pattern: '^[a-f0-9]{64}$'
       format: publicUserID
+      description: Public userID (private userID hashed 5000 times)
     privateUserID:
       type: string
       title: privateUserID
       minLength: 32
+      description: Private userID
     category:
       type: string
       enum:
@@ -111,11 +164,25 @@ components:
         - preview
         - poi_highlight
       readOnly: true
-    paramSkipSegments:
-      title: paramSkipSegments
+      description: possible category types
+    hashSkipSegment:
       type: array
+      title: hashSkipSegment
+      description: Privacy preserving skip segments
+      minItems: 1
+      uniqueItems: true
       items:
-        $ref: '#/components/schemas/skipSegment'
+        type: object
+        additionalProperties: false
+        properties:
+          videoID:
+            type: string
+            pattern: '^[0-9A-Za-z_-]{11}$'
+          hash:
+            type: string
+            pattern: '^[A-Fa-f0-9]{64}$'
+          segments:
+            $ref: '#/components/schemas/skipSegment'
   securitySchemes:
     userID:
       name: loremipsum
@@ -131,7 +198,6 @@ components:
     videoID:
       name: videoID
       in: query
-      required: true
       schema:
         type: string
         pattern: '^[0-9A-Za-z_-]{11}$'
@@ -224,3 +290,4 @@ components:
           - YouTube
         default: YouTube
       description: Service to get segments for
+  responses: {}

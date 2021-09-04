@@ -429,7 +429,8 @@ paths:
   /getUsername:
     get:
       summary: Get Current Username
-      tags: []
+      tags:
+        - normal
       responses:
         '200':
           description: OK
@@ -448,6 +449,96 @@ paths:
       security:
         - userID: []
       description: Get current userName
+  /segmentInfo:
+    get:
+      summary: Get Segment Info
+      tags:
+        - normal
+        - stats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  minProperties: 1
+                  maxProperties: 10
+                  properties:
+                    videoID:
+                      $ref: '#/components/schemas/videoID'
+                    startTime:
+                      type: number
+                      format: float
+                      description: start time of segment
+                    endTime:
+                      type: number
+                      format: float
+                      description: end time of segment
+                    votes:
+                      type: integer
+                      description: votes on segment
+                    locked:
+                      type: boolean
+                      enum:
+                        - 1
+                        - 0
+                      default: false
+                      description: If segment is locked
+                    UUID:
+                      $ref: '#/components/schemas/segmentUUID'
+                    userID:
+                      $ref: '#/components/schemas/publicUserID'
+                    timeSubmitted:
+                      type: string
+                      format: date-time
+                      description: Time of submission
+                    views:
+                      type: integer
+                      description: Number of reported views on segment
+                    category:
+                      $ref: '#/components/schemas/category'
+                    service:
+                      $ref: '#/components/schemas/services'
+                    videoDuration:
+                      $ref: '#/components/schemas/videoDuration'
+                    hidden:
+                      type: boolean
+                      default: false
+                      description: If segment is hidden
+                    reputation:
+                      type: number
+                      format: float
+                      description: Reputation of submitter at time of submission
+                    shadowHidden:
+                      type: boolean
+                      default: false
+                      description: IF submitter is shadowbanned
+                    userAgent:
+                      type: string
+                      description: userAgent of submitter
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      operationId: getSegmentInfo
+      description: Get information about a segment or segments
+      parameters:
+        - schema:
+            type: string
+            pattern: '^[A-Fa-f0-9]{64}$'
+          in: query
+          name: UUID
+          description: Target segment UUID
+        - schema:
+            type: array
+            minItems: 1
+            maxItems: 10
+          in: query
+          name: UUIDs
+          description: Array of UUID
 components:
   schemas:
     skipSegment:
@@ -466,9 +557,7 @@ components:
         category:
           $ref: '#/components/schemas/category'
         videoDuration:
-          type: number
-          minimum: 0
-          description: Duration of video at time of submission
+          $ref: '#/components/schemas/videoDuration'
     segmentUUID:
       type: string
       title: segmentUUID
@@ -525,8 +614,7 @@ components:
         additionalProperties: false
         properties:
           videoID:
-            type: string
-            pattern: '^[0-9A-Za-z_-]{11}$'
+            $ref: '#/components/schemas/videoID'
           hash:
             type: string
             pattern: '^[A-Fa-f0-9]{64}$'
@@ -573,6 +661,16 @@ components:
       title: UUID
       description: Segment UUID
       pattern: '^[a-f0-9]{64,65}$'
+    videoID:
+      type: string
+      title: videoID
+      pattern: '^[0-9A-Za-z_-]{11}$'
+      description: ID of video
+    videoDuration:
+      type: number
+      title: videoDuration
+      format: float
+      description: Duration of video at time of submission.
   securitySchemes:
     userID:
       name: loremipsum

@@ -444,61 +444,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  minProperties: 1
-                  maxProperties: 10
-                  properties:
-                    videoID:
-                      $ref: '#/components/schemas/videoID'
-                    startTime:
-                      type: number
-                      format: float
-                      description: start time of segment
-                    endTime:
-                      type: number
-                      format: float
-                      description: end time of segment
-                    votes:
-                      type: integer
-                      description: votes on segment
-                    locked:
-                      type: boolean
-                      enum:
-                        - 1
-                        - 0
-                      description: If segment is locked
-                    UUID:
-                      $ref: '#/components/schemas/segmentUUID'
-                    userID:
-                      $ref: '#/components/schemas/publicUserID'
-                    timeSubmitted:
-                      type: string
-                      format: date-time
-                      description: Time of submission
-                    views:
-                      type: integer
-                      description: Number of reported views on segment
-                    category:
-                      $ref: '#/components/schemas/category'
-                    service:
-                      $ref: '#/components/schemas/services'
-                    videoDuration:
-                      $ref: '#/components/schemas/videoDuration'
-                    hidden:
-                      type: boolean
-                      default: false
-                      description: If segment is hidden
-                    reputation:
-                      type: number
-                      format: float
-                      description: Reputation of submitter at time of submission
-                    shadowHidden:
-                      type: boolean
-                      default: false
-                      description: IF submitter is shadowbanned
-                    userAgent:
-                      type: string
-                      description: userAgent of submitter
+                  $ref: '#/components/schemas/dbSegment'
         '400':
           description: Bad Request
         '404':
@@ -580,7 +526,8 @@ paths:
   '/lockCategories/{sha256HashPrefix}':
     get:
       summary: Get lock categories by hash
-      tags: []
+      tags:
+        - normal
       responses:
         '200':
           description: OK
@@ -612,9 +559,33 @@ paths:
       - $ref: '#/components/parameters/sha256HashPrefix'
   /searchSegments:
     get:
-      summary: Your GET endpoint
-      tags: []
-      responses: {}
+      summary: Get all segments for a given video
+      tags:
+        - normal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  segmentCount:
+                    type: integer
+                    description: Total segments matching query
+                  page:
+                    type: integer
+                    description: Page Number
+                  segments:
+                    type: array
+                    minItems: 1
+                    maxItems: 10
+                    items:
+                      $ref: '#/components/schemas/searchSegment'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
       operationId: getSearchSegments
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
@@ -629,11 +600,58 @@ paths:
           in: query
           name: page
           description: Page to start from
+        - schema:
+            type: integer
+            minimum: -2
+          in: query
+          name: minVotes
+          description: Lower vote threshold
+        - schema:
+            type: integer
+          in: query
+          name: maxVotes
+          description: Upper vote threshold
+        - schema:
+            type: integer
+            minimum: 0
+          in: query
+          name: minViews
+          description: Lower view threshold
+        - schema:
+            type: integer
+          in: query
+          name: maxViews
+          description: Upper view threshold
+        - schema:
+            type: boolean
+            default: 'true '
+          in: query
+          name: locked
+          description: Show locked segments
+        - schema:
+            type: boolean
+            default: 'true '
+          in: query
+          name: hidden
+          description: Show hidden segments
+        - schema:
+            type: boolean
+            default: 'true '
+          in: query
+          name: ignored
+          description: Show ignored segments
 components:
   schemas:
     skipSegment:
       type: object
       title: skipSegment
+      examples:
+        - - segment:
+              - 363.90582
+              - 370.79547
+            UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
+            category: outro
+            videoDuration: 0
       properties:
         segment:
           type: array
@@ -648,13 +666,8 @@ components:
           $ref: '#/components/schemas/category'
         videoDuration:
           $ref: '#/components/schemas/videoDuration'
-      examples:
-        - - segment:
-              - 363.90582
-              - 370.79547
-            UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
-            category: outro
-            videoDuration: 0
+        actionType:
+          $ref: '#/components/schemas/actionType'
     segmentUUID:
       type: string
       title: segmentUUID
@@ -676,7 +689,7 @@ components:
       title: privateUserID
       minLength: 32
       description: Private userID
-      example: secretpassword
+      example: ZFSIsNotRAIDSnapshotsAreNotBackups
     category:
       type: string
       enum:
@@ -730,6 +743,12 @@ components:
       title: submitSegment
       type: object
       description: Object of segment to submit
+      examples:
+        - segment:
+            - 3
+            - 10
+          category: sponsor
+          actionType: skip
       properties:
         segment:
           type: array
@@ -743,31 +762,18 @@ components:
         category:
           $ref: '#/components/schemas/category'
         actionType:
-          $ref: '#/components/schemas/actionTypes'
+          $ref: '#/components/schemas/actionType'
       required:
         - segment
         - category
-      examples:
-        - segment:
-            - 3
-            - 10
-          category: sponsor
-          actionType: skip
-    actionTypes:
+    actionType:
       type: string
-      title: actionTypes
+      title: actionType
       enum:
         - skip
         - mute
       default: skip
       description: possible action types
-    UUID:
-      type: string
-      title: UUID
-      description: Segment UUID
-      pattern: '^[a-f0-9]{64,65}$'
-      examples: []
-      example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
     videoID:
       type: string
       title: videoID
@@ -800,6 +806,107 @@ components:
       title: lockReason
       example: High Traffic Video
       description: VIP specified lock reason
+    searchSegment:
+      title: singleSearchSegment
+      type: object
+      properties:
+        UUID:
+          $ref: '#/components/schemas/segmentUUID'
+        timeSubmitted:
+          type: integer
+          description: Time submitted (ms epoch)
+        startTime:
+          type: number
+          format: float
+          description: start time of segment
+        endTime:
+          type: number
+          format: float
+          description: end time of segment
+        category:
+          $ref: '#/components/schemas/category'
+        actionType:
+          $ref: '#/components/schemas/actionType'
+        votes:
+          type: string
+          description: votes on segment
+        views:
+          type: integer
+          description: Reported views on segment
+        locked:
+          type: boolean
+          description: If segment is locked
+        hidden:
+          type: boolean
+          description: If segment is hidden
+        shadowhidden:
+          description: If submitter is shadowbanned
+          type: boolean
+      description: Single search segment
+    dbSegment:
+      title: dbSegment
+      type: object
+      minProperties: 1
+      maxProperties: 10
+      properties:
+        videoID:
+          $ref: '#/components/schemas/videoID'
+        startTime:
+          type: number
+          format: float
+          description: start time of segment
+        endTime:
+          type: number
+          format: float
+          description: end time of segment
+        votes:
+          type: integer
+          description: votes on segment
+        locked:
+          type: boolean
+          enum:
+            - 1
+            - 0
+          description: If segment is locked
+        incorrectVotes:
+          type: integer
+          description: Number of incorrect votes
+        UUID:
+          $ref: '#/components/schemas/segmentUUID'
+        userID:
+          $ref: '#/components/schemas/publicUserID'
+        timeSubmitted:
+          type: integer
+          description: Time of submission (epoch ms)
+        views:
+          type: integer
+          description: Number of reported views on segment
+        category:
+          $ref: '#/components/schemas/category'
+        actionType:
+          $ref: '#/components/schemas/actionType'
+        service:
+          $ref: '#/components/schemas/services'
+        videoDuration:
+          $ref: '#/components/schemas/videoDuration'
+        hidden:
+          type: boolean
+          default: false
+          description: If segment is hidden
+        reputation:
+          type: number
+          format: float
+          description: Reputation of submitter at time of submission
+        shadowHidden:
+          type: boolean
+          default: false
+          description: If submitter is shadowbanned
+        hashedVideoID:
+          $ref: '#/components/schemas/videoIDHash'
+        userAgent:
+          type: string
+          description: userAgent of submitter
+      description: Segment as it is in DB
   securitySchemes:
     supersecret:
       name: userID

@@ -2,7 +2,8 @@ openapi: 3.1.0
 info:
   title: SponsorBlock API
   version: '1.0'
-  summary: SponsorBlock APi
+  summary: SponsorBlock API
+  description: Swagger Implementation of SponsorBlock API
   license:
     name: GPL v3.0
     identifier: GPL-3.0-only
@@ -13,6 +14,13 @@ info:
 servers:
   - url: 'https://sponsor.ajay.app/api'
     description: Production Server
+tags:
+  - name: admin
+    description: Commands that need admin userID
+  - name: normal
+    description: Commands that can be performed with any userID
+  - name: stats
+    description: Commands for gathering statistics
 paths:
   /addUserAsVIP:
     post:
@@ -43,10 +51,13 @@ paths:
           in: query
           name: enabled
           description: enable or disable user
+      tags:
+        - admin
   /skipSegments:
     get:
       summary: Get Skip Segments
-      tags: []
+      tags:
+        - normal
       responses:
         '200':
           description: OK
@@ -78,6 +89,22 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  UUID:
+                    $ref: '#/components/schemas/segmentUUID'
+                  category:
+                    $ref: '#/components/schemas/category'
+                  segment:
+                    type: array
+                    description: Start and end time in seconds
+                    items:
+                      type: integer
+                      maximum: 2
+                      minimum: 2
         '400':
           description: Bad Request
         '403':
@@ -148,10 +175,13 @@ paths:
                 - endTime
                 - segments
         description: Alternative Submission format
+      tags:
+        - normal
   '/skipSegments/{sha256HashPrefix}':
     get:
       summary: Get Skip Segments (Extra Privacy)
-      tags: []
+      tags:
+        - normal
       responses:
         '200':
           description: OK
@@ -188,6 +218,7 @@ paths:
         name: sha256HashPrefix
         in: path
         description: hash of the YouTube videoID
+        required: true
   /voteOnSponsorTime:
     post:
       summary: Vote on Segment
@@ -204,7 +235,7 @@ paths:
               schema:
                 type: string
                 description: Moderation reason
-      description: ''
+      description: Vote on segment or vote to change category on segment
       parameters:
         - $ref: '#/components/parameters/UUID'
         - schema:
@@ -219,10 +250,12 @@ paths:
         - $ref: '#/components/parameters/category'
       security:
         - userID: []
+      tags:
+        - normal
   /viewedVideoSponsorTime:
     parameters: []
     post:
-      summary: ''
+      summary: Add view to Segment
       operationId: postViewedVideoSponsorTime
       responses:
         '200':
@@ -232,6 +265,189 @@ paths:
       parameters:
         - $ref: '#/components/parameters/UUID'
       description: Add view to segment
+      tags:
+        - normal
+  /userInfo:
+    get:
+      summary: get User Info
+      tags:
+        - normal
+        - stats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userID:
+                    $ref: '#/components/schemas/publicUserID'
+                  userName:
+                    description: public userID if not set
+                    oneOf:
+                      - properties: {}
+                        type: string
+                      - $ref: '#/components/schemas/publicUserID'
+                  minutesSaved:
+                    type: number
+                    format: float
+                    description: minutes saved
+                  segmentCount:
+                    type: integer
+                    description: Total number of segments excluding ignored/ hidden segments
+                  ignoredSegmentCount:
+                    type: integer
+                    description: Total number of ignored/ hidden segments
+                  viewCount:
+                    type: integer
+                    description: Total number of views ecluding views on ignored/ hidden segments
+                  ignoredViewCount:
+                    type: integer
+                    description: Total number of views on ignored/ hidden segments
+                  warnings:
+                    type: integer
+                    description: currently enabled warnings
+                  reputation:
+                    type: number
+                    description: Reputation value
+                    format: float
+                  vip:
+                    type: boolean
+                    description: VIP status
+                  lastSegmentID:
+                    $ref: '#/components/schemas/segmentUUID'
+        '400':
+          description: Bad Request
+      operationId: getUserInfo
+      parameters:
+        - schema:
+            type: string
+            pattern: '^[a-f0-9]{64}$'
+          in: query
+          name: publicUserID
+          description: Public userID of user to lookup
+        - schema:
+            type: string
+          in: query
+          name: userID
+          description: Private userID
+        - schema:
+            uniqueItems: true
+            enum:
+              - userID
+              - userName
+              - minutesSaved
+              - segmentCount
+              - ignoredSegmentCount
+              - viewCount
+              - ignoredViewCount
+              - warnings
+              - warningReason
+              - reputation
+              - vip
+              - lastSegmentID
+            type: array
+          in: query
+          name: value
+          description: Values to get from userInfo
+          style: spaceDelimited
+      description: Get information for a user or yourself
+  /getViewsForUser:
+    get:
+      summary: get Views for user
+      tags:
+        - stats
+        - normal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  viewCount:
+                    type: integer
+        '404':
+          description: Not Found
+      operationId: getViewsForUser
+      description: Get number of views on all segments
+      security:
+        - userID: []
+    parameters: []
+  /getTimeSavedForUser:
+    get:
+      summary: Get time saved for user
+      tags:
+        - normal
+        - stats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  timeSaved:
+                    type: number
+                    format: float
+                    description: time saved in minutes
+        '400':
+          description: Bad Request
+      operationId: get-getTimeSavedForUser
+      security:
+        - userID: []
+  /setUsername:
+    parameters: []
+    post:
+      summary: Set Username
+      operationId: setUsername
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden (You are not an admin)
+      tags:
+        - normal
+        - admin
+      security:
+        - userID: []
+        - userID: []
+      parameters:
+        - schema:
+            type: string
+            maxLength: 64
+          in: query
+          name: username
+          description: New Username
+          required: true
+      description: Set new username for user
+  /getUsername:
+    get:
+      summary: Get Current Username
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userName:
+                    description: public userID if not username set
+                    oneOf:
+                      - type: string
+                        properties: {}
+                      - $ref: '#/components/schemas/publicUserID'
+      operationId: getUsername
+      security:
+        - userID: []
+      description: Get current userName
 components:
   schemas:
     skipSegment:
@@ -273,7 +489,7 @@ components:
       minLength: 32
       description: Private userID
     category:
-      type: string
+      type: array
       enum:
         - sponsor
         - outro
@@ -283,8 +499,21 @@ components:
         - music_offtopic
         - preview
         - poi_highlight
-      readOnly: true
       description: possible category types
+      minItems: 1
+      items:
+        type: string
+        enum:
+          - sponsor
+          - selfpromo
+          - interaction
+          - intro
+          - outro
+          - preview
+          - music_offtopic
+          - poi_highlight
+        default: sponsor
+      readOnly: true
     hashSkipSegment:
       type: array
       title: hashSkipSegment
@@ -396,7 +625,6 @@ components:
       schema:
         type: array
         minItems: 1
-        default: sponsor
         enum:
           - sponsor
           - selfpromo
@@ -428,7 +656,6 @@ components:
         enum:
           - skip
           - mute
-        default: skip
         uniqueItems: true
         minItems: 1
       style: spaceDelimited
@@ -468,4 +695,3 @@ components:
         pattern: '^[a-f0-9]{64,65}$'
       description: UUID of target segment
       required: true
-  responses: {}

@@ -3,7 +3,7 @@ info:
   title: SponsorBlock API
   version: '1.0'
   summary: SponsorBlock API
-  description: Swagger Implementation of SponsorBlock API
+  description: OpenAPI documentation of SponsorBlock API
   license:
     name: GPL v3.0
     identifier: GPL-3.0-only
@@ -127,7 +127,7 @@ paths:
         - $ref: '#/components/parameters/requiredVideoID'
         - schema:
             type: string
-            default: mchang-swag/1
+            default: mchang-oapi/1
           in: query
           name: userAgent
           description: user agent of submitter
@@ -135,8 +135,6 @@ paths:
         - $ref: '#/components/parameters/service'
         - schema:
             type: number
-            minimum: 0
-            format: float
           in: query
           name: videoDuration
           description: 'duration of video, will attempt to retrieve from YT API if missing. Used to determine when a submission is out of date'
@@ -1424,3 +1422,4 @@ components:
         pattern: '^[a-f0-9]{64}$'
       description: Public userID of target
   responses: {}
+  examples: {}

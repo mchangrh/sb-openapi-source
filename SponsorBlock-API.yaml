@@ -188,6 +188,50 @@ paths:
         name: sha256HashPrefix
         in: path
         description: hash of the YouTube videoID
+  /voteOnSponsorTime:
+    post:
+      summary: Vote on Segment
+      operationId: postVoteOnSponsorTime
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Moderation reason
+      description: ''
+      parameters:
+        - $ref: '#/components/parameters/UUID'
+        - schema:
+            type: integer
+            enum:
+              - 0
+              - 1
+              - 20
+          in: query
+          name: type
+          description: 'Vote type - 0 for downvote, 1 for upvote, 20 to undo vote'
+        - $ref: '#/components/parameters/category'
+      security:
+        - userID: []
+  /viewedVideoSponsorTime:
+    parameters: []
+    post:
+      summary: ''
+      operationId: postViewedVideoSponsorTime
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+      parameters:
+        - $ref: '#/components/parameters/UUID'
+      description: Add view to segment
 components:
   schemas:
     skipSegment:
@@ -295,6 +339,11 @@ components:
         - mute
       default: skip
       description: possible action types
+    UUID:
+      type: string
+      title: UUID
+      description: Segment UUID
+      pattern: '^[a-f0-9]{64,65}$'
   securitySchemes:
     userID:
       name: loremipsum
@@ -411,4 +460,12 @@ components:
           - YouTube
         default: YouTube
       description: Service for segments
+    UUID:
+      name: UUID
+      in: query
+      schema:
+        type: string
+        pattern: '^[a-f0-9]{64,65}$'
+      description: UUID of target segment
+      required: true
   responses: {}

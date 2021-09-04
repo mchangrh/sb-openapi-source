@@ -1,0 +1,226 @@
+openapi: 3.1.0
+info:
+  title: SponsorBlock API
+  version: '1.0'
+  summary: SponsorBlock APi
+  license:
+    name: GPL v3.0
+    identifier: GPL-3.0-only
+  contact:
+    name: Michael Chang
+    url: 'https://github.com/mchangrh'
+    email: michael@mchang.name
+servers:
+  - url: 'https://sponsor.ajay.app/api'
+    description: Production Server
+paths:
+  /addUserAsVIP:
+    post:
+      summary: ''
+      operationId: postadduserasvip
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+      security:
+        - adminUserID: []
+      description: |-
+        Add user to VIP table.
+
+        VIPs have extra privileges and their votes count more.
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: userID
+          required: true
+          description: Public userID of user to add to VIP list
+        - schema:
+            type: boolean
+          in: query
+          name: enabled
+          description: enable or disable user
+  /skipSegments:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/paramSkipSegments'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      operationId: getskipsegments
+      description: Get segments to skip for a video
+      parameters:
+        - $ref: '#/components/parameters/videoID'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/actionType'
+        - $ref: '#/components/parameters/actionTypes'
+        - $ref: '#/components/parameters/requiredSegment'
+        - $ref: '#/components/parameters/requiredSegments'
+        - $ref: '#/components/parameters/service'
+components:
+  schemas:
+    skipSegment:
+      title: skipSegment
+      type: object
+      properties:
+        segment:
+          type: array
+          maxItems: 2
+          minItems: 2
+          items:
+            type: integer
+        UUID:
+          $ref: '#/components/schemas/segmentUUID'
+    segmentUUID:
+      type: string
+      title: segmentUUID
+      pattern: '^[a-f0-9]{64,65}$'
+      examples:
+        - string
+      format: segmentUUID
+    publicUserID:
+      type: string
+      title: publicUserID
+      pattern: '^[a-f0-9]{64}$'
+      format: publicUserID
+    privateUserID:
+      type: string
+      title: privateUserID
+      minLength: 32
+    category:
+      type: string
+      enum:
+        - sponsor
+        - outro
+        - selfpromo
+        - interaction
+        - intro
+        - music_offtopic
+        - preview
+        - poi_highlight
+      readOnly: true
+    paramSkipSegments:
+      title: paramSkipSegments
+      type: array
+      items:
+        $ref: '#/components/schemas/skipSegment'
+  securitySchemes:
+    userID:
+      name: loremipsum
+      type: apiKey
+      in: query
+      description: Private userID
+    adminUserID:
+      name: foobar
+      type: apiKey
+      in: query
+      description: Admin's private userID
+  parameters:
+    videoID:
+      name: videoID
+      in: query
+      required: true
+      schema:
+        type: string
+        pattern: '^[0-9A-Za-z_-]{11}$'
+        example: dQw4w9WgXcQ
+      description: ID of video
+    category:
+      name: category
+      in: query
+      schema:
+        type: string
+        enum:
+          - sponsor
+          - selfpromo
+          - interaction
+          - intro
+          - outro
+          - preview
+          - poi_highlight
+          - music_offtopic
+        default: sponsor
+      description: Segment Category
+    categories:
+      name: categories
+      in: query
+      required: false
+      schema:
+        type: array
+        minItems: 1
+        default: sponsor
+        enum:
+          - sponsor
+          - selfpromo
+          - interaction
+          - intro
+          - outro
+          - preview
+          - music_offtopic
+          - poi_highlight
+        behavior: Read/Write
+        uniqueItems: true
+      style: spaceDelimited
+      description: Array of categories
+    actionType:
+      name: actionType
+      in: query
+      schema:
+        type: string
+        enum:
+          - skip
+          - mute
+        default: skip
+      description: Action type
+    actionTypes:
+      name: actionTypes
+      in: query
+      schema:
+        type: array
+        enum:
+          - skip
+          - mute
+        default: skip
+        uniqueItems: true
+        minItems: 1
+      style: spaceDelimited
+      description: multiple action types
+    requiredSegment:
+      name: requiredSegment
+      in: query
+      required: false
+      schema:
+        type: string
+        pattern: '^([a-f0-9]{64,65}$'
+      description: Segment UUID to get regardless of votes
+    requiredSegments:
+      name: requiredSegments
+      in: query
+      required: false
+      schema:
+        type: array
+        minItems: 1
+        uniqueItems: true
+      description: Segment UUIDs to get regardless
+    service:
+      name: service
+      in: query
+      required: false
+      schema:
+        type: string
+        enum:
+          - YouTube
+        default: YouTube
+      description: Service to get segments for

@@ -63,7 +63,7 @@ paths:
       operationId: getskipsegments
       description: Get segments to skip for a video
       parameters:
-        - $ref: '#/components/parameters/videoID'
+        - $ref: '#/components/parameters/requiredVideoID'
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/categories'
         - $ref: '#/components/parameters/actionType'
@@ -72,6 +72,82 @@ paths:
         - $ref: '#/components/parameters/requiredSegments'
         - $ref: '#/components/parameters/service'
     parameters: []
+    post:
+      summary: ''
+      operationId: postSkipSegments
+      responses:
+        '200':
+          description: OK
+        '400':
+          description: Bad Request
+        '403':
+          description: Forbidden
+          content:
+            text/plain:
+              schema:
+                type: string
+                description: Reason for rejection
+        '409':
+          description: Duplicate
+        '429':
+          description: Too Many Requests
+      description: Create a segment on a video
+      security:
+        - userID: []
+      parameters:
+        - $ref: '#/components/parameters/requiredVideoID'
+        - schema:
+            type: string
+            default: mchang-swag/1
+          in: query
+          name: userAgent
+          description: user agent of submitter
+          required: true
+        - $ref: '#/components/parameters/service'
+        - schema:
+            type: number
+            minimum: 0
+            format: float
+          in: query
+          name: videoDuration
+          description: 'duration of video, will attempt to retrieve from YT API if missing. Used to determine when a submission is out of date'
+        - $ref: '#/components/parameters/actionType'
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                videoID:
+                  type: string
+                  pattern: '^[0-9A-Za-z_-]{11}$'
+                  example: dQw4w9WgXcQ
+                  description: ID of video
+                startTime:
+                  type: number
+                  format: float
+                  description: start time of segment
+                endTime:
+                  type: number
+                  format: float
+                  description: end time of segment
+                service:
+                  $ref: '#/components/schemas/services'
+                videoDuration:
+                  type: number
+                  format: float
+                  description: 'Duration of video, will attempt to retrieve from YT API if missing. Used to determine when a submission is out of date'
+                  minimum: 0
+                segments:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/submitSegment'
+              required:
+                - videoID
+                - startTime
+                - endTime
+                - segments
+        description: Alternative Submission format
   '/skipSegments/{sha256HashPrefix}':
     get:
       summary: Get Skip Segments (Extra Privacy)
@@ -183,6 +259,42 @@ components:
             pattern: '^[A-Fa-f0-9]{64}$'
           segments:
             $ref: '#/components/schemas/skipSegment'
+    services:
+      type: string
+      title: services
+      enum:
+        - YouTube
+      default: YouTube
+      description: Supported services
+    submitSegment:
+      title: submitSegment
+      type: object
+      description: Object of segemnt to submit
+      properties:
+        segment:
+          type: array
+          description: |
+            start and end time in seconds
+          items:
+            type: number
+            exclusiveMinimum: 2
+            exclusiveMaximum: 2
+            format: float
+        category:
+          $ref: '#/components/schemas/category'
+        actionType:
+          $ref: '#/components/schemas/actionTypes'
+      required:
+        - segment
+        - category
+    actionTypes:
+      type: string
+      title: actionTypes
+      enum:
+        - skip
+        - mute
+      default: skip
+      description: possible action types
   securitySchemes:
     userID:
       name: loremipsum
@@ -203,6 +315,15 @@ components:
         pattern: '^[0-9A-Za-z_-]{11}$'
         example: dQw4w9WgXcQ
       description: ID of video
+    requiredVideoID:
+      name: videoID
+      in: query
+      schema:
+        type: string
+        pattern: '^[0-9A-Za-z_-]{11}$'
+        example: dQw4w9WgXcQ
+      description: ID of video
+      required: true
     category:
       name: category
       in: query
@@ -289,5 +410,5 @@ components:
         enum:
           - YouTube
         default: YouTube
-      description: Service to get segments for
+      description: Service for segments
   responses: {}

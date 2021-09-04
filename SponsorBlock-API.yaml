@@ -33,8 +33,7 @@ paths:
           description: Bad Request
         '403':
           description: Forbidden
-      security:
-        - adminUserID: []
+      security: []
       description: |-
         Add user to VIP table.
 
@@ -119,8 +118,7 @@ paths:
         '429':
           description: Too Many Requests
       description: Create a segment on a video
-      security:
-        - userID: []
+      security: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
         - schema:
@@ -198,13 +196,6 @@ paths:
       operationId: getSkipSegmentsByHash
       description: Get skip segments with extra privacy
       parameters:
-        - schema:
-            type: string
-            minLength: 4
-            pattern: '[A-Fa-f0-9]'
-          in: query
-          name: prefix
-          description: can be used instead of path
         - $ref: '#/components/parameters/category'
         - $ref: '#/components/parameters/categories'
         - $ref: '#/components/parameters/requiredSegment'
@@ -213,12 +204,7 @@ paths:
         - $ref: '#/components/parameters/actionTypes'
         - $ref: '#/components/parameters/service'
     parameters:
-      - schema:
-          type: string
-        name: sha256HashPrefix
-        in: path
-        description: hash of the YouTube videoID
-        required: true
+      - $ref: '#/components/parameters/sha256HashPrefix'
   /voteOnSponsorTime:
     post:
       summary: Vote on Segment
@@ -248,8 +234,7 @@ paths:
           name: type
           description: 'Vote type - 0 for downvote, 1 for upvote, 20 to undo vote'
         - $ref: '#/components/parameters/category'
-      security:
-        - userID: []
+      security: []
       tags:
         - normal
   /viewedVideoSponsorTime:
@@ -373,8 +358,7 @@ paths:
           description: Not Found
       operationId: getViewsForUser
       description: Get number of views on all segments
-      security:
-        - userID: []
+      security: []
     parameters: []
   /getTimeSavedForUser:
     get:
@@ -397,8 +381,7 @@ paths:
         '400':
           description: Bad Request
       operationId: get-getTimeSavedForUser
-      security:
-        - userID: []
+      security: []
   /setUsername:
     parameters: []
     post:
@@ -415,7 +398,6 @@ paths:
         - normal
         - admin
       security:
-        - userID: []
         - userID: []
       parameters:
         - schema:
@@ -446,8 +428,7 @@ paths:
                         properties: {}
                       - $ref: '#/components/schemas/publicUserID'
       operationId: getUsername
-      security:
-        - userID: []
+      security: []
       description: Get current userName
   /segmentInfo:
     get:
@@ -485,7 +466,6 @@ paths:
                       enum:
                         - 1
                         - 0
-                      default: false
                       description: If segment is locked
                     UUID:
                       $ref: '#/components/schemas/segmentUUID'
@@ -539,6 +519,116 @@ paths:
           in: query
           name: UUIDs
           description: Array of UUID
+  /userID:
+    get:
+      summary: Search usernames
+      tags:
+        - normal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                maxItems: 10
+                items:
+                  type: object
+                  properties:
+                    userName:
+                      type: string
+                    userID:
+                      $ref: '#/components/schemas/publicUserID'
+        '400':
+          description: Bad Request (Your inputs are wrong/impossible or exceed the character limits)
+        '404':
+          description: Not Found
+      operationId: getUserID
+      description: Search for userIDs corresponding to userID
+      parameters:
+        - schema:
+            type: string
+          in: query
+          name: username
+          description: 'Search string for username. Case sensitive. Minimum for non-exact is 3 characters, maximum is 64 characters'
+          required: true
+        - schema:
+            type: boolean
+          in: query
+          name: exact
+          description: Searches for exact username with no wildcard
+  /lockCategories:
+    get:
+      summary: Get lock categories on a video
+      tags:
+        - normal
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/videoLock'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      operationId: getLockCategories
+      description: Get lock categories given videoID
+      parameters:
+        - $ref: '#/components/parameters/requiredVideoID'
+  '/lockCategories/{sha256HashPrefix}':
+    get:
+      summary: Get lock categories by hash
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    videoID:
+                      $ref: '#/components/schemas/videoID'
+                    hash:
+                      $ref: '#/components/schemas/videoIDHash'
+                    categories:
+                      type: array
+                      minItems: 1
+                      items:
+                        $ref: '#/components/schemas/category'
+                    reason:
+                      $ref: '#/components/schemas/lockReason'
+        '400':
+          description: Bad Request
+        '404':
+          description: Not Found
+      operationId: getLockCategoriesByHash
+      description: Get lock categores for a video with extra privacy
+    parameters:
+      - $ref: '#/components/parameters/sha256HashPrefix'
+  /searchSegments:
+    get:
+      summary: Your GET endpoint
+      tags: []
+      responses: {}
+      operationId: getSearchSegments
+      parameters:
+        - $ref: '#/components/parameters/requiredVideoID'
+        - $ref: '#/components/parameters/category'
+        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/actionType'
+        - $ref: '#/components/parameters/actionTypes'
+        - $ref: '#/components/parameters/service'
+        - schema:
+            type: integer
+            minimum: 0
+          in: query
+          name: page
+          description: Page to start from
 components:
   schemas:
     skipSegment:
@@ -558,6 +648,13 @@ components:
           $ref: '#/components/schemas/category'
         videoDuration:
           $ref: '#/components/schemas/videoDuration'
+      examples:
+        - - segment:
+              - 363.90582
+              - 370.79547
+            UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
+            category: outro
+            videoDuration: 0
     segmentUUID:
       type: string
       title: segmentUUID
@@ -566,49 +663,50 @@ components:
         - string
       format: segmentUUID
       description: UUID of segment
+      example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
     publicUserID:
       type: string
       title: publicUserID
       pattern: '^[a-f0-9]{64}$'
       format: publicUserID
       description: Public userID (private userID hashed 5000 times)
+      example: 7b89ea26f77bda8176e655eee86029f28c1e6514b6d6e3450bce362b5b126ca3
     privateUserID:
       type: string
       title: privateUserID
       minLength: 32
       description: Private userID
+      example: secretpassword
     category:
-      type: array
+      type: string
       enum:
         - sponsor
-        - outro
         - selfpromo
         - interaction
         - intro
-        - music_offtopic
+        - outro
         - preview
+        - music_offtopic
         - poi_highlight
-      description: possible category types
-      minItems: 1
-      items:
-        type: string
-        enum:
-          - sponsor
-          - selfpromo
-          - interaction
-          - intro
-          - outro
-          - preview
-          - music_offtopic
-          - poi_highlight
-        default: sponsor
-      readOnly: true
+      default: sponsor
+      description: Segment Category
+      title: ''
     hashSkipSegment:
       type: array
       title: hashSkipSegment
       description: Privacy preserving skip segments
       minItems: 1
       uniqueItems: true
+      examples:
+        - - videoID: V9_PjdU3Mpo
+            hash: af01cd59f8994c4ee9f53102953c91532494dd385f30eedb5c8453f438acd885
+            segments:
+              - segment:
+                  - 363.90582
+                  - 370.79547
+                UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
+                category: outro
+                videoDuration: 0
       items:
         type: object
         additionalProperties: false
@@ -616,8 +714,7 @@ components:
           videoID:
             $ref: '#/components/schemas/videoID'
           hash:
-            type: string
-            pattern: '^[A-Fa-f0-9]{64}$'
+            $ref: '#/components/schemas/videoIDHash'
           segments:
             $ref: '#/components/schemas/skipSegment'
     services:
@@ -627,10 +724,12 @@ components:
         - YouTube
       default: YouTube
       description: Supported services
+      examples: []
+      example: YouTube
     submitSegment:
       title: submitSegment
       type: object
-      description: Object of segemnt to submit
+      description: Object of segment to submit
       properties:
         segment:
           type: array
@@ -648,6 +747,12 @@ components:
       required:
         - segment
         - category
+      examples:
+        - segment:
+            - 3
+            - 10
+          category: sponsor
+          actionType: skip
     actionTypes:
       type: string
       title: actionTypes
@@ -661,6 +766,8 @@ components:
       title: UUID
       description: Segment UUID
       pattern: '^[a-f0-9]{64,65}$'
+      examples: []
+      example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
     videoID:
       type: string
       title: videoID
@@ -671,17 +778,37 @@ components:
       title: videoDuration
       format: float
       description: Duration of video at time of submission.
+    videoIDHash:
+      type: string
+      title: videoIDHash
+      description: Full hash of videoID
+      pattern: '^[a-f0-9]{64}$'
+      example: 5f6b0b4e201f2a7e66927abb5cadeec81624dcc8efe6644b78aa182213f653a2
+    videoLock:
+      title: videoLocks
+      type: object
+      properties:
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/category'
+        reason:
+          type: string
+          description: Specified reason for lock
+    lockReason:
+      type: string
+      title: lockReason
+      example: High Traffic Video
+      description: VIP specified lock reason
   securitySchemes:
-    userID:
-      name: loremipsum
+    supersecret:
+      name: userID
       type: apiKey
       in: query
-      description: Private userID
-    adminUserID:
-      name: foobar
+    superdupersecret:
+      name: adminUserID
       type: apiKey
       in: query
-      description: Admin's private userID
   parameters:
     videoID:
       name: videoID
@@ -704,7 +831,6 @@ components:
       name: category
       in: query
       schema:
-        type: string
         enum:
           - sponsor
           - selfpromo
@@ -715,6 +841,7 @@ components:
           - poi_highlight
           - music_offtopic
         default: sponsor
+        type: string
       description: Segment Category
     categories:
       name: categories
@@ -793,3 +920,10 @@ components:
         pattern: '^[a-f0-9]{64,65}$'
       description: UUID of target segment
       required: true
+    sha256HashPrefix:
+      name: sha256HashPrefix
+      in: path
+      required: true
+      schema:
+        type: string
+      description: First 4-32 characters of the has of the YouTube videoID

@@ -19,8 +19,12 @@ tags:
     description: Commands that need admin userID
   - name: normal
     description: Commands that can be performed with any userID
+  - name: vip
+    description: Commands that need VIP userID
   - name: stats
     description: Commands for gathering statistics
+  - name: nouserid
+    description: Commands that can be performed without userID
 paths:
   /addUserAsVIP:
     post:
@@ -56,7 +60,7 @@ paths:
     get:
       summary: Get Skip Segments
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -179,7 +183,7 @@ paths:
     get:
       summary: Get Skip Segments (Extra Privacy)
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -251,12 +255,12 @@ paths:
         - $ref: '#/components/parameters/UUID'
       description: Add view to segment
       tags:
-        - normal
+        - nouserid
   /userInfo:
     get:
       summary: get User Info
       tags:
-        - normal
+        - nouserid
         - stats
       responses:
         '200':
@@ -434,8 +438,8 @@ paths:
     get:
       summary: Get Segment Info
       tags:
-        - normal
         - stats
+        - nouserid
       responses:
         '200':
           description: OK
@@ -469,7 +473,7 @@ paths:
     get:
       summary: Search usernames
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -507,7 +511,7 @@ paths:
     get:
       summary: Get lock categories on a video
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -527,7 +531,7 @@ paths:
     get:
       summary: Get lock categories by hash
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -561,7 +565,7 @@ paths:
     get:
       summary: Get all segments for a given video
       tags:
-        - normal
+        - nouserid
       responses:
         '200':
           description: OK
@@ -640,6 +644,53 @@ paths:
           in: query
           name: ignored
           description: Show ignored segments
+  '/status/{value}':
+    get:
+      summary: Get server status
+      tags:
+        - stats
+        - nouserid
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/statusResponse'
+        '404':
+          description: Not Found
+      operationId: getStatusParam
+      description: Get status and stats of the server
+    parameters:
+      - schema:
+          type: string
+          enum:
+            - uptime
+            - commit
+            - db
+            - startTime
+            - processTime
+        name: value
+        in: path
+        description: value to fetch
+        required: true
+  /status:
+    get:
+      summary: Get server status
+      tags:
+        - nouserid
+        - stats
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/searchSegment'
+        '404':
+          description: Not Found
+      operationId: getStatus
+      description: Get status and stats of the server
 components:
   schemas:
     skipSegment:
@@ -809,12 +860,14 @@ components:
     searchSegment:
       title: singleSearchSegment
       type: object
+      description: Single search segment
       properties:
         UUID:
           $ref: '#/components/schemas/segmentUUID'
         timeSubmitted:
           type: integer
           description: Time submitted (ms epoch)
+          example: 1564088876715
         startTime:
           type: number
           format: float
@@ -842,12 +895,12 @@ components:
         shadowhidden:
           description: If submitter is shadowbanned
           type: boolean
-      description: Single search segment
     dbSegment:
       title: dbSegment
       type: object
       minProperties: 1
       maxProperties: 10
+      description: Segment as it is in DB
       properties:
         videoID:
           $ref: '#/components/schemas/videoID'
@@ -878,6 +931,8 @@ components:
         timeSubmitted:
           type: integer
           description: Time of submission (epoch ms)
+          default: 0
+          example: 1564088876715
         views:
           type: integer
           description: Number of reported views on segment
@@ -906,7 +961,38 @@ components:
         userAgent:
           type: string
           description: userAgent of submitter
-      description: Segment as it is in DB
+    statusResponse:
+      title: statusResponse
+      type: object
+      description: ''
+      properties:
+        uptime:
+          type: integer
+          description: Uptime in seconds
+        commit:
+          description: ''
+          oneOf:
+            - description: Full SHA hash of latest git commit
+              example: ca479bc2f70f6b38d86254fdab7af6e1b5f9c150
+            - description: testing mode
+              enum:
+                - development
+                - test
+              default: test
+          type: string
+        db:
+          type: integer
+          default: 0
+          example: 1
+          description: Current database version
+        startTime:
+          type: integer
+          example: 1564088876715
+          description: Unix (ms) time that request was recieved
+        processTime:
+          type: integer
+          description: ms between startTime and sending response
+          example: 1
   securitySchemes:
     supersecret:
       name: userID

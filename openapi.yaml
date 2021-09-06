@@ -1,4 +1,4 @@
-openapi: 3.0.0
+openapi: 3.0.3
 info:
   title: SponsorBlock API
   version: 1.0.1
@@ -27,7 +27,7 @@ tags:
 paths:
   /addUserAsVIP:
     post:
-      summary: Add user as VIP
+      summary: Add uUser as VIP
       operationId: postadduserasvip
       responses:
         '200':
@@ -72,10 +72,19 @@ paths:
                 uniqueItems: true
                 items:
                   $ref: '#/components/schemas/skipSegment'
+        '400':
+          description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    $ref: '#/components/schemas/invalidParameter'
         '404':
           description: Not Found
       operationId: getskipsegments
-      description: Get segments to skip for a video
+      description: 'Get segments to skip for a video for given categories, actionType and service'
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
         - $ref: '#/components/parameters/category'
@@ -108,20 +117,84 @@ paths:
                       type: integer
                       maximum: 2
                       minimum: 2
+          links:
+            retreivesegmentinfo:
+              operationId: getSegmentInfo
+              parameters:
+                UUID: $response.body#/UUID
+              description: |
+                The `UUID` value returned in the response can be used as the `UUID` parameter in `GET /segmentInfo`.
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorMessage:
+                    oneOf:
+                      - properties: {}
+                        description: ActionType rejection
+                        example: ActionType is not supported with this category
+                        default: ActionType is not supported with this category
+                      - properties: {}
+                        description: Invalid segment times
+                        example: 'One of your segments times are invalid (too short, startTime before endTime, etc.)'
+                        default: 'One of your segments times are invalid (too short, startTime before endTime, etc.)'
+                      - properties: {}
+                        description: POI time is too early
+                        example: POI cannot be that early
+                        default: POI cannot be that early
+                      - properties: {}
+                        description: Sponsor not long enough
+                        example: Sponsors must be longer than 1 second long
+                        default: Sponsors must be longer than 1 second long
+                    type: string
         '403':
           description: Forbidden
           content:
             text/plain:
               schema:
-                type: string
-                description: Reason for rejection
+                type: object
+                properties:
+                  errorMessage:
+                    oneOf:
+                      - type: string
+                        properties: {}
+                        description: Active warning message
+                        default: Submission rejected due to a warning from a moderator....
+                        example: Submission rejected due to a warning from a moderator....
+                      - oneOf:
+                          - type: string
+                            description: Lengh over 80% of the video
+                            example: Total length of your submitted segments are over 80% of the video.
+                            default: Total length of your submitted segments are over 80% of the video.
+                          - type: string
+                            properties: {}
+                            example: Rejected based on NeuralBlock predictions.
+                            default: Rejected based on NeuralBlock predictions.
+                            description: Rejected by NeuralBlock
+                            deprecated: true
+                      - type: string
+                        properties: {}
+                        description: Submission on locked video
+                        example: New submissions are not allowed for the following category
+                        default: New submissions are not allowed for the following category
         '409':
           description: Duplicate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  errorMessage:
+                    type: string
+                    example: Sponsors has already been submitted before.
+                    default: Sponsors has already been submitted before.
+                    description: Segment already submitted before
         '429':
           description: Too Many Requests
-      description: Create a segment on a video
+      description: Submit a segment on a video
       security:
         - privateUserID: []
       parameters:
@@ -140,6 +213,23 @@ paths:
           name: videoDuration
           description: 'duration of video, will attempt to retrieve from YT API if missing. Used to determine when a submission is out of date'
         - $ref: '#/components/parameters/actionType'
+        - $ref: '#/components/parameters/requiredCategory'
+        - schema:
+            type: number
+            minimum: 0
+            format: float
+          in: query
+          name: startTime
+          description: Start time of segment
+          required: true
+        - schema:
+            type: number
+            format: float
+            minimum: 0
+          in: query
+          name: endTime
+          description: End time of segment
+          required: true
       requestBody:
         content:
           application/json:
@@ -151,16 +241,11 @@ paths:
                   pattern: '^[0-9A-Za-z_-]{11}$'
                   example: dQw4w9WgXcQ
                   description: ID of video
-                startTime:
-                  type: number
-                  format: float
-                  description: start time of segment
-                  example: 1
-                endTime:
-                  type: number
-                  format: float
-                  description: end time of segment
-                  example: 3
+                userAgent:
+                  type: string
+                  default: mchang-oapi/1
+                  example: mchang-oapi/1
+                  minLength: 0
                 service:
                   $ref: '#/components/schemas/services'
                 videoDuration:
@@ -174,8 +259,7 @@ paths:
                     $ref: '#/components/schemas/submitSegment'
               required:
                 - videoID
-                - startTime
-                - endTime
+                - userAgent
                 - segments
             examples: {}
         description: Alternative Submission format
@@ -197,6 +281,10 @@ paths:
                   $ref: '#/components/schemas/hashSkipSegment'
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '404':
           description: Not Found
       operationId: getSkipSegmentsByHash
@@ -247,13 +335,51 @@ paths:
   /viewedVideoSponsorTime:
     parameters: []
     post:
-      summary: Add view to Segment
+      summary: Add View to Segment
       operationId: postViewedVideoSponsorTime
       responses:
         '200':
           description: OK
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: x doesn't exist
+                    example: Submission doesn't exist
+        '403':
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    anyOf:
+                      - properties: {}
+                        default: Not allowed to upvote segment with too many downvotes unless you are VIP.
+                        example: Not allowed to upvote segment with too many downvotes unless you are VIP.
+                        description: If trying to upvote a downvote-hidden segment as non-VIP
+                      - properties: {}
+                        default: Vote rejected due to a warning from a moderator.
+                        example: Vote rejected due to a warning from a moderator.
+                        description: Failed due to active warning
+                    type: string
+        '500':
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal error creating segment vote
+                    default: Internal error creating segment vote
       parameters:
         - $ref: '#/components/parameters/UUID'
       description: Add view to segment
@@ -311,14 +437,20 @@ paths:
                     $ref: '#/components/schemas/segmentUUID'
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
       operationId: getUserInfo
       parameters:
-        - schema:
-            type: string
-            pattern: '^[a-f0-9]{64}$'
-          in: query
+        - in: query
           name: publicUserID
-          description: Public userID of user to lookup
+          description: public userID of user to lookup
+          schema:
+            type: string
+            minLength: 64
+            pattern: '^[a-z0-9]{64)$'
+            maxLength: 64
         - schema:
             type: string
           in: query
@@ -346,10 +478,10 @@ paths:
           name: value
           description: Values to get from userInfo
           style: spaceDelimited
-      description: Get information for a user or yourself
+      description: Get information for a user by their publicID or own userID
   /getViewsForUser:
     get:
-      summary: Get Views for user
+      summary: Get Views for User
       tags:
         - stats
         - normal
@@ -366,7 +498,7 @@ paths:
         '404':
           description: Not Found
       operationId: getViewsForUser
-      description: Get number of views on all segments
+      description: Get user's number of reported views across all segments
       security:
         - privateUserID: []
     parameters: []
@@ -390,9 +522,12 @@ paths:
                     description: time saved in minutes
         '400':
           description: Bad Request
-      operationId: get-getTimeSavedForUser
+        '404':
+          description: Not Found (User has no submission)
+      operationId: getTimeSavedForUser
       security:
         - privateUserID: []
+      description: Get user's total reported time saved across all segments
   /setUsername:
     parameters: []
     post:
@@ -414,6 +549,7 @@ paths:
         - schema:
             type: string
             maxLength: 64
+            minLength: 1
           in: query
           name: username
           description: New Username
@@ -421,7 +557,7 @@ paths:
       description: Set new username for user
   /getUsername:
     get:
-      summary: Get Current Username
+      summary: Get current username
       tags:
         - normal
       responses:
@@ -441,10 +577,10 @@ paths:
       operationId: getUsername
       security:
         - privateUserID: []
-      description: Get current userName
+      description: Get current username
   /segmentInfo:
     get:
-      summary: Get Segment Info
+      summary: Get segment info
       tags:
         - stats
         - nouserid
@@ -458,9 +594,17 @@ paths:
                 items:
                   $ref: '#/components/schemas/dbSegment'
         '400':
-          description: Bad Request
-        '404':
-          description: Not Found
+          description: Not Found (UUIDs are not valid or do not meet format requirements)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: UUIDs parameter does not match format requirements.
+                    example: UUIDs parameter does not match format requirements.
+                    description: reason for failiure
       operationId: getSegmentInfo
       description: Get information about a segment or segments
       parameters:
@@ -505,7 +649,7 @@ paths:
         '404':
           description: Not Found
       operationId: getUserID
-      description: Search for userIDs corresponding to userID
+      description: Search for userIDs corresponding to username
       parameters:
         - schema:
             type: string
@@ -535,7 +679,7 @@ paths:
         '404':
           description: Not Found
       operationId: getLockCategories
-      description: Get lock categories given videoID
+      description: Get lock categories on videoID
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
     post:
@@ -546,14 +690,22 @@ paths:
           description: OK
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '403':
           description: Forbidden (You are not a VIP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/403VIP'
       description: 'Create a category lock on the video, disallowing further submissions for that category'
       security:
         - privateUserID: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
-        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/requiredCategories'
         - schema:
             type: string
           in: query
@@ -574,24 +726,42 @@ paths:
                 properties:
                   message:
                     type: string
-                    default: Removed lock categories entrys for video videoID
-                    example: Removed lock categories entrys for video videoID
+                    default: 'Removed lock categories entrys for video {{videoID}}'
+                    example: 'Removed lock categories entrys for video {{videoID}}'
               examples:
                 Example:
                   value:
                     message: Removed lock categories entrys for video videoID
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: Bad Format
+                    example: Bad Format
         '403':
           description: Forbidden (You are not a VIP)
-      description: Delete existing category locks on a video
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: Must be a VIP to mark videos.
+                    example: Must be a VIP to mark videos.
+      description: 'Delete existing category locks on a video, allowing submissions for those categories'
       security:
         - privateUserID: []
       tags:
         - vip
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
-        - $ref: '#/components/parameters/categories'
+        - $ref: '#/components/parameters/requiredCategories'
   '/lockCategories/{sha256HashPrefix}':
     get:
       summary: Get lock categories by hash
@@ -618,8 +788,17 @@ paths:
                         $ref: '#/components/schemas/category'
                     reason:
                       $ref: '#/components/schemas/lockReason'
+                  required:
+                    - videoID
+                    - hash
+                    - categories
+                    - reason
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '404':
           description: Not Found
       operationId: getLockCategoriesByHash
@@ -653,6 +832,13 @@ paths:
                       $ref: '#/components/schemas/searchSegment'
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reason:
+                    $ref: '#/components/schemas/invalidParameter'
         '404':
           description: Not Found
       operationId: getSearchSegments
@@ -668,7 +854,7 @@ paths:
             minimum: 0
           in: query
           name: page
-          description: Page to start from
+          description: Page to start from (0 indexed)
         - schema:
             type: integer
             minimum: -2
@@ -709,6 +895,7 @@ paths:
           in: query
           name: ignored
           description: Show ignored segments
+      description: Get all segments on a video matching the filter critera
   '/status/{value}':
     get:
       summary: Get server status
@@ -941,10 +1128,27 @@ paths:
       responses:
         '200':
           description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    default: Warning issued to user xyz
+                    example: Warning issued to user xyz
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '403':
           description: Forbidden (You are not a VIP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/403VIP'
         '409':
           description: User already warned
       description: |-
@@ -953,16 +1157,27 @@ paths:
         If a user is re-warned but there is still a non-expired warning, it is reenabled
       tags:
         - vip
-      security:
-        - privateVIPUserID: []
-      parameters:
-        - $ref: '#/components/parameters/publicUserID'
-        - schema:
-            type: boolean
-            default: true
-          in: query
-          name: enabled
-          description: Enable or disable warning
+      parameters: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                userID:
+                  $ref: '#/components/schemas/publicUserID'
+                enabled:
+                  type: boolean
+                  description: If warning should be enabled or disabled
+                  default: true
+                reason:
+                  type: string
+                  default: ' '
+                  example: Bad submissions
+                  description: Warning reason to display to user
+                issuerUserID:
+                  $ref: '#/components/schemas/privateUserID'
+        description: Alternative submission method
   /clearCache:
     post:
       summary: Clear Cache
@@ -977,13 +1192,22 @@ paths:
                 example: Cache cleared on video videoID
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '403':
           description: Forbidden (You are not a VIP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/403VIP'
       description: Clear Redis cahce for video
       security:
         - privateUserID: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
+        - $ref: '#/components/parameters/service'
       tags:
         - vip
   /purgeAllSegments:
@@ -995,8 +1219,16 @@ paths:
           description: OK
         '400':
           description: Bad Request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/invalidParameter'
         '403':
           description: Forbidden (You are not a VIP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/403VIP'
       description: Hide all segments on a video without affecting submitters' reputation
       security:
         - privateUserID: []
@@ -1184,7 +1416,7 @@ components:
       type: object
       minProperties: 1
       maxProperties: 10
-      description: Segment as it is in DB
+      description: Segment as-is in DB
       properties:
         videoID:
           $ref: '#/components/schemas/videoID'
@@ -1287,19 +1519,42 @@ components:
           description: ms between startTime and sending response
           example: 1
           format: float
+    privateUserID:
+      type: string
+      title: privateUserID
+      minLength: 32
+      description: private userID when not used in query parameter
+    invalidParameter:
+      type: string
+      title: invalidParameter
+      default: parameter does not match format requirement
+      example: parameter does not match format requirement
+      description: Parameter does not match format requirements (Bad JSON or not an arrya)
+    403VIP:
+      title: 403VIP
+      type: object
+      properties:
+        message:
+          type: string
+          default: Must be a VIP
+          example: Must be a VIP
+      description: 403 Error when non-VIP users access VIP endpoints
   securitySchemes:
     privateUserID:
       name: userID
       type: apiKey
       in: query
+      description: private userID
     privateAdminUserID:
       name: adminUserID
       type: apiKey
       in: query
+      description: admin private userID (Only used in admin calls)
     privateVIPUserID:
       name: issuerUserID
       type: apiKey
       in: query
+      description: VIP private userID (only used in certain VIP calls)
   parameters:
     requiredVideoID:
       name: videoID
@@ -1308,6 +1563,7 @@ components:
         type: string
         pattern: '^[0-9A-Za-z_-]{11}$'
         example: dQw4w9WgXcQ
+        maxLength: 11
       description: ID of video
       required: true
     category:
@@ -1325,6 +1581,7 @@ components:
           - music_offtopic
         default: sponsor
         type: string
+        pattern: '[a-z_]'
       description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
     categories:
       name: categories
@@ -1380,6 +1637,8 @@ components:
         type: string
         pattern: '^[a-f0-9]{64,65}$'
         example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
+        minLength: 64
+        maxLength: 65
       description: Segment UUID to get regardless of votes
     requiredSegments:
       name: requiredSegments
@@ -1392,6 +1651,7 @@ components:
         items:
           type: string
       description: Segment UUIDs to get regardless
+      style: spaceDelimited
     service:
       name: service
       in: query
@@ -1401,7 +1661,7 @@ components:
         enum:
           - YouTube
         default: YouTube
-      description: Service for segments
+      description: 'Service to target - See https://github.com/ajayyy/SponsorBlock/wiki/Types#service'
     UUID:
       name: UUID
       in: query
@@ -1418,7 +1678,7 @@ components:
       schema:
         type: string
         minLength: 4
-        maxLength: 32
+        maxLength: 64
         pattern: '[\da-f]'
       description: First 4-32 characters of the has of the YouTube videoID
     publicUserID:
@@ -1430,6 +1690,43 @@ components:
         format: publicUserID
         pattern: '^[a-f0-9]{64}$'
         maxLength: 64
+        minLength: 64
       description: Public userID of target
+    requiredCategory:
+      name: category
+      in: query
+      required: true
+      schema:
+        type: string
+        enum:
+          - sponsor
+          - selfpromo
+          - interaction
+          - intro
+          - outro
+          - preview
+          - music_offtopic
+          - poi_highlight
+        pattern: '[a-z_]'
+      description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
+    requiredCategories:
+      name: categories
+      in: query
+      required: true
+      schema:
+        type: array
+        minItems: 1
+        enum:
+          - sponsor
+          - selfpromo
+          - interaction
+          - intro
+          - outro
+          - preview
+          - music_offtopic
+          - poi_highlight
+        uniqueItems: true
+      description: 'Array of categories - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
   responses: {}
   examples: {}
+security: []

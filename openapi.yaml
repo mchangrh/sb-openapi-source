@@ -1,12 +1,11 @@
-openapi: 3.1.0
+openapi: 3.0.0
 info:
   title: SponsorBlock API
-  version: '1.0'
-  summary: SponsorBlock API
+  version: 1.0.1
   description: OpenAPI documentation of SponsorBlock API
   license:
     name: GPL v3.0
-    identifier: GPL-3.0-only
+    url: 'https://www.gnu.org/licenses/gpl-3.0.en.html'
   contact:
     name: Michael Chang
     url: 'https://github.com/mchangrh'
@@ -37,7 +36,8 @@ paths:
           description: Bad Request
         '403':
           description: Forbidden
-      security: []
+      security:
+        - privateAdminUserID: []
       description: |-
         Add user to VIP table.
 
@@ -122,7 +122,8 @@ paths:
         '429':
           description: Too Many Requests
       description: Create a segment on a video
-      security: []
+      security:
+        - privateUserID: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
         - schema:
@@ -154,10 +155,12 @@ paths:
                   type: number
                   format: float
                   description: start time of segment
+                  example: 1
                 endTime:
                   type: number
                   format: float
                   description: end time of segment
+                  example: 3
                 service:
                   $ref: '#/components/schemas/services'
                 videoDuration:
@@ -174,6 +177,7 @@ paths:
                 - startTime
                 - endTime
                 - segments
+            examples: {}
         description: Alternative Submission format
       tags:
         - normal
@@ -236,7 +240,8 @@ paths:
           name: type
           description: 'Vote type - 0 for downvote, 1 for upvote, 20 to undo vote'
         - $ref: '#/components/parameters/category'
-      security: []
+      security:
+        - privateUserID: []
       tags:
         - normal
   /viewedVideoSponsorTime:
@@ -256,7 +261,7 @@ paths:
         - nouserid
   /userInfo:
     get:
-      summary: get User Info
+      summary: Get User Info
       tags:
         - nouserid
         - stats
@@ -335,6 +340,8 @@ paths:
               - vip
               - lastSegmentID
             type: array
+            items:
+              type: string
           in: query
           name: value
           description: Values to get from userInfo
@@ -342,7 +349,7 @@ paths:
       description: Get information for a user or yourself
   /getViewsForUser:
     get:
-      summary: get Views for user
+      summary: Get Views for user
       tags:
         - stats
         - normal
@@ -360,7 +367,8 @@ paths:
           description: Not Found
       operationId: getViewsForUser
       description: Get number of views on all segments
-      security: []
+      security:
+        - privateUserID: []
     parameters: []
   /getTimeSavedForUser:
     get:
@@ -383,7 +391,8 @@ paths:
         '400':
           description: Bad Request
       operationId: get-getTimeSavedForUser
-      security: []
+      security:
+        - privateUserID: []
   /setUsername:
     parameters: []
     post:
@@ -400,7 +409,7 @@ paths:
         - normal
         - admin
       security:
-        - userID: []
+        - privateUserID: []
       parameters:
         - schema:
             type: string
@@ -430,7 +439,8 @@ paths:
                         properties: {}
                       - $ref: '#/components/schemas/publicUserID'
       operationId: getUsername
-      security: []
+      security:
+        - privateUserID: []
       description: Get current userName
   /segmentInfo:
     get:
@@ -464,6 +474,9 @@ paths:
             type: array
             minItems: 1
             maxItems: 10
+            uniqueItems: true
+            items:
+              type: string
           in: query
           name: UUIDs
           description: Array of UUID
@@ -738,7 +751,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/searchSegment'
+                $ref: '#/components/schemas/statusResponse'
         '404':
           description: Not Found
       operationId: getStatus
@@ -761,19 +774,23 @@ paths:
                     type: array
                     items:
                       type: string
+                    maxItems: 100
                   viewCounts:
                     type: array
                     items:
                       type: integer
+                    maxItems: 100
                   totalSubmissions:
                     type: array
                     items:
                       type: integer
+                    maxItems: 100
                   minutesSaved:
                     type: array
                     items:
                       type: number
                       format: float
+                    maxItems: 100
         '400':
           description: Bad Request
       operationId: getTopUsers
@@ -808,7 +825,8 @@ paths:
                       - type: integer
                         properties: {}
                         description: Only if countContributingUsers was true
-                      - type: 'null'
+                      - type: string
+                        nullable: true
                         properties: {}
                     description: ''
                   activeUsers:
@@ -916,7 +934,6 @@ paths:
           description: Should all previous submissions be banned as well
       tags:
         - vip
-        - admin
   /warnUser:
     post:
       summary: Warn User
@@ -992,13 +1009,6 @@ components:
     skipSegment:
       type: object
       title: skipSegment
-      examples:
-        - - segment:
-              - 363.90582
-              - 370.79547
-            UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
-            category: outro
-            videoDuration: 0
       properties:
         segment:
           type: array
@@ -1006,7 +1016,9 @@ components:
           minItems: 2
           description: start and end time in seconds
           items:
-            type: integer
+            type: number
+            example: 363.9582
+            format: float
         UUID:
           $ref: '#/components/schemas/segmentUUID'
         category:
@@ -1019,10 +1031,6 @@ components:
       type: string
       title: segmentUUID
       pattern: '^[a-f0-9]{64,65}$'
-      examples:
-        - string
-      format: segmentUUID
-      description: UUID of segment
       example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
     publicUserID:
       type: string
@@ -1051,16 +1059,6 @@ components:
       description: Privacy preserving skip segments
       minItems: 1
       uniqueItems: true
-      examples:
-        - - videoID: V9_PjdU3Mpo
-            hash: af01cd59f8994c4ee9f53102953c91532494dd385f30eedb5c8453f438acd885
-            segments:
-              - segment:
-                  - 363.90582
-                  - 370.79547
-                UUID: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
-                category: outro
-                videoDuration: 0
       items:
         type: object
         additionalProperties: false
@@ -1078,18 +1076,11 @@ components:
         - YouTube
       default: YouTube
       description: Supported services
-      examples: []
       example: YouTube
     submitSegment:
       title: submitSegment
       type: object
       description: Object of segment to submit
-      examples:
-        - segment:
-            - 3
-            - 10
-          category: sponsor
-          actionType: skip
       properties:
         segment:
           type: array
@@ -1097,8 +1088,8 @@ components:
             start and end time in seconds
           items:
             type: number
-            exclusiveMinimum: 2
-            exclusiveMaximum: 2
+            minimum: 2
+            maximum: 2
             format: float
         category:
           $ref: '#/components/schemas/category'
@@ -1120,6 +1111,8 @@ components:
       title: videoID
       pattern: '^[0-9A-Za-z_-]{11}$'
       description: ID of video
+      example: dQw4w9WgXcQ
+      maxLength: 11
     videoDuration:
       type: number
       title: videoDuration
@@ -1131,6 +1124,7 @@ components:
       description: Full hash of videoID
       pattern: '^[a-f0-9]{64}$'
       example: 5f6b0b4e201f2a7e66927abb5cadeec81624dcc8efe6644b78aa182213f653a2
+      maxLength: 64
     videoLock:
       title: videoLocks
       type: object
@@ -1265,11 +1259,13 @@ components:
         uptime:
           type: integer
           description: Uptime in seconds
+          format: float
         commit:
           description: ''
           oneOf:
             - description: Full SHA hash of latest git commit
               example: ca479bc2f70f6b38d86254fdab7af6e1b5f9c150
+              pattern: '^[0-9a-f]{40}$'
             - description: testing mode
               enum:
                 - development
@@ -1285,10 +1281,12 @@ components:
           type: integer
           example: 1564088876715
           description: Unix (ms) time that request was recieved
+          format: float
         processTime:
           type: integer
           description: ms between startTime and sending response
           example: 1
+          format: float
   securitySchemes:
     privateUserID:
       name: userID
@@ -1327,7 +1325,7 @@ components:
           - music_offtopic
         default: sponsor
         type: string
-      description: Segment Category
+      description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
     categories:
       name: categories
       in: query
@@ -1344,10 +1342,11 @@ components:
           - preview
           - music_offtopic
           - poi_highlight
-        behavior: Read/Write
         uniqueItems: true
+        items:
+          type: string
       style: spaceDelimited
-      description: Array of categories
+      description: 'Array of categories - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
     actionType:
       name: actionType
       in: query
@@ -1368,15 +1367,19 @@ components:
           - mute
         uniqueItems: true
         minItems: 1
+        items:
+          type: string
+        maxItems: 2
       style: spaceDelimited
-      description: multiple action types
+      description: 'multiple action types - Options are skip, mute'
     requiredSegment:
       name: requiredSegment
       in: query
       required: false
       schema:
         type: string
-        pattern: '^([a-f0-9]{64,65}$'
+        pattern: '^[a-f0-9]{64,65}$'
+        example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
       description: Segment UUID to get regardless of votes
     requiredSegments:
       name: requiredSegments
@@ -1386,6 +1389,8 @@ components:
         type: array
         minItems: 1
         uniqueItems: true
+        items:
+          type: string
       description: Segment UUIDs to get regardless
     service:
       name: service
@@ -1403,6 +1408,7 @@ components:
       schema:
         type: string
         pattern: '^[a-f0-9]{64,65}$'
+        maxLength: 65
       description: UUID of target segment
       required: true
     sha256HashPrefix:
@@ -1411,6 +1417,9 @@ components:
       required: true
       schema:
         type: string
+        minLength: 4
+        maxLength: 32
+        pattern: '[\da-f]'
       description: First 4-32 characters of the has of the YouTube videoID
     publicUserID:
       name: userID
@@ -1420,6 +1429,7 @@ components:
         type: string
         format: publicUserID
         pattern: '^[a-f0-9]{64}$'
+        maxLength: 64
       description: Public userID of target
   responses: {}
   examples: {}

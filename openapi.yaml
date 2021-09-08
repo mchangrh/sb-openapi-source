@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SponsorBlock API
-  version: 1.0.2
+  version: 1.0.3
   description: OpenAPI documentation of SponsorBlock API
   license:
     name: GPL v3.0
@@ -88,11 +88,8 @@ paths:
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
         - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/categories'
         - $ref: '#/components/parameters/actionType'
-        - $ref: '#/components/parameters/actionTypes'
         - $ref: '#/components/parameters/requiredSegment'
-        - $ref: '#/components/parameters/requiredSegments'
         - $ref: '#/components/parameters/service'
     parameters: []
     post:
@@ -212,8 +209,8 @@ paths:
           in: query
           name: videoDuration
           description: 'duration of video, will attempt to retrieve from YT API if missing. Used to determine when a submission is out of date'
-        - $ref: '#/components/parameters/actionType'
-        - $ref: '#/components/parameters/requiredCategory'
+        - $ref: '#/components/parameters/submitActionType'
+        - $ref: '#/components/parameters/submitCategory'
         - schema:
             type: number
             minimum: 0
@@ -291,11 +288,8 @@ paths:
       description: Get skip segments with extra privacy
       parameters:
         - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/categories'
         - $ref: '#/components/parameters/requiredSegment'
-        - $ref: '#/components/parameters/requiredSegments'
         - $ref: '#/components/parameters/actionType'
-        - $ref: '#/components/parameters/actionTypes'
         - $ref: '#/components/parameters/service'
     parameters:
       - $ref: '#/components/parameters/sha256HashPrefix'
@@ -449,7 +443,7 @@ paths:
           schema:
             type: string
             minLength: 64
-            pattern: '^[a-z0-9]{64)$'
+            pattern: '^[a-z0-9]{64}$'
             maxLength: 64
         - schema:
             type: string
@@ -705,7 +699,7 @@ paths:
         - privateUserID: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
-        - $ref: '#/components/parameters/requiredCategories'
+        - $ref: '#/components/parameters/category'
         - schema:
             type: string
           in: query
@@ -761,7 +755,7 @@ paths:
         - vip
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
-        - $ref: '#/components/parameters/requiredCategories'
+        - $ref: '#/components/parameters/category'
   '/lockCategories/{sha256HashPrefix}':
     get:
       summary: Get lock categories by hash
@@ -845,9 +839,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
         - $ref: '#/components/parameters/category'
-        - $ref: '#/components/parameters/categories'
         - $ref: '#/components/parameters/actionType'
-        - $ref: '#/components/parameters/actionTypes'
         - $ref: '#/components/parameters/service'
         - schema:
             type: integer
@@ -1569,44 +1561,27 @@ components:
     category:
       name: category
       in: query
-      schema:
-        enum:
-          - sponsor
-          - selfpromo
-          - interaction
-          - intro
-          - outro
-          - preview
-          - poi_highlight
-          - music_offtopic
-        default: sponsor
-        type: string
-        pattern: '[a-z_]'
-      description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
-    categories:
-      name: categories
-      in: query
-      required: false
+      required: true
       schema:
         type: array
         minItems: 1
-        enum:
-          - sponsor
-          - selfpromo
-          - interaction
-          - intro
-          - outro
-          - preview
-          - music_offtopic
-          - poi_highlight
-        uniqueItems: true
         items:
           type: string
-      style: spaceDelimited
+          pattern: '[a-z_]'
+          enum:
+            - sponsor
+            - selfpromo
+            - interaction
+            - intro
+            - outro
+            - preview
+            - music_offtopic
+            - poi_highlight
       description: 'Array of categories - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
-    actionType:
+    submitActionType:
       name: actionType
       in: query
+      required: true
       schema:
         type: string
         enum:
@@ -1614,48 +1589,40 @@ components:
           - mute
         default: skip
       description: Action type
-    actionTypes:
-      name: actionTypes
+    actionType:
+      name: actionType
       in: query
+      required: true
       schema:
         type: array
-        enum:
-          - skip
-          - mute
         uniqueItems: true
         minItems: 1
         items:
           type: string
+          enum:
+            - skip
+            - mute
         maxItems: 2
-      style: spaceDelimited
       description: 'multiple action types - Options are skip, mute'
     requiredSegment:
       name: requiredSegment
       in: query
       required: false
       schema:
-        type: string
-        pattern: '^[a-f0-9]{64,65}$'
-        example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
-        minLength: 64
-        maxLength: 65
-      description: Segment UUID to get regardless of votes
-    requiredSegments:
-      name: requiredSegments
-      in: query
-      required: false
-      schema:
         type: array
         minItems: 1
         uniqueItems: true
         items:
           type: string
-      description: Segment UUIDs to get regardless
-      style: spaceDelimited
+          pattern: '^[a-f0-9]{64,65}$'
+          example: 07bb5fb8cfb9d819dad4fe38fe9c51a7f3b6d6aebf36054bfffa75c8019eb57f
+          minLength: 64
+          maxLength: 65
+      description: Segment UUIDs to get regardless of votes
     service:
       name: service
       in: query
-      required: false
+      required: true
       schema:
         type: string
         enum:
@@ -1692,7 +1659,7 @@ components:
         maxLength: 64
         minLength: 64
       description: Public userID of target
-    requiredCategory:
+    submitCategory:
       name: category
       in: query
       required: true
@@ -1709,24 +1676,4 @@ components:
           - poi_highlight
         pattern: '[a-z_]'
       description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
-    requiredCategories:
-      name: categories
-      in: query
-      required: true
-      schema:
-        type: array
-        minItems: 1
-        enum:
-          - sponsor
-          - selfpromo
-          - interaction
-          - intro
-          - outro
-          - preview
-          - music_offtopic
-          - poi_highlight
-        uniqueItems: true
-      description: 'Array of categories - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
-  responses: {}
-  examples: {}
 security: []

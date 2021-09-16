@@ -1228,6 +1228,33 @@ paths:
         - $ref: '#/components/parameters/requiredVideoID'
       tags:
         - vip
+  /userStats:
+    get:
+      summary: get User Stats with breakdown
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/userStats'
+        '400':
+          description: Bad Request
+      operationId: getUserStats
+      description: get User Statistics with breakdown of category and actionType
+      parameters:
+        - $ref: '#/components/parameters/publicUserID'
+        - schema:
+            type: boolean
+          in: query
+          name: fetchCategoryStats
+          description: display category stats
+        - schema:
+            type: string
+          in: query
+          name: fetchActionTypeStats
+          description: display type stats
 components:
   schemas:
     skipSegment:
@@ -1531,6 +1558,54 @@ components:
           default: Must be a VIP
           example: Must be a VIP
       description: 403 Error when non-VIP users access VIP endpoints
+    userStats:
+      title: userStats
+      type: object
+      description: Response from userStats
+      properties:
+        userID:
+          $ref: '#/components/schemas/publicUserID'
+        userName:
+          type: string
+          description: user name
+        minutesSaved:
+          type: integer
+        segmentCount:
+          type: integer
+        categoryCount:
+          oneOf:
+            - type: object
+              properties:
+                sponsor:
+                  type: integer
+                intro:
+                  type: integer
+                outro:
+                  type: integer
+                interaction:
+                  type: integer
+                selfpromo:
+                  type: integer
+                music_offtopic:
+                  type: integer
+                preview:
+                  type: integer
+                poi_highlight:
+                  type: integer
+              description: Number of segments per category
+            - properties: {}
+              nullable: true
+        actionTypeCount:
+          oneOf:
+            - type: object
+              description: Number of segments per type
+              properties:
+                skip:
+                  type: integer
+                mute:
+                  type: integer
+            - properties: {}
+              nullable: true
   securitySchemes:
     privateUserID:
       name: userID

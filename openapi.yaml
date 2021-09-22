@@ -1255,6 +1255,47 @@ paths:
           in: query
           name: fetchActionTypeStats
           description: display type stats
+  /lockReason:
+    get:
+      summary: Get Lock Reasons
+      tags: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    category:
+                      $ref: '#/components/schemas/category'
+                    locked:
+                      type: integer
+                      description: If category is locked
+                    reason:
+                      $ref: '#/components/schemas/lockReason'
+      operationId: getLockReason
+      parameters:
+        - $ref: '#/components/parameters/requiredVideoID'
+        - schema:
+            type: array
+            minItems: 0
+            uniqueItems: true
+            enum:
+              - sponsor
+              - selfpromo
+              - interaction
+              - intro
+              - outro
+              - preview
+              - music_offtopic
+              - poi_highlight
+          in: query
+          name: category
+          description: categories to get reasons for
+      description: get reasons for locks on videos
 components:
   schemas:
     skipSegment:

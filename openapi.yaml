@@ -1,7 +1,7 @@
 openapi: 3.0.4
 info:
   title: SponsorBlock API
-  version: 1.0.3
+  version: 1.0.4
   description: OpenAPI documentation of SponsorBlock API
   license:
     name: GPL v3.0
@@ -27,7 +27,7 @@ tags:
 paths:
   /addUserAsVIP:
     post:
-      summary: Add uUser as VIP
+      summary: Add User as VIP
       operationId: postadduserasvip
       responses:
         '200':
@@ -1226,6 +1226,7 @@ paths:
         - privateUserID: []
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
+        - $ref: '#/components/parameters/service'
       tags:
         - vip
   /userStats:
@@ -1267,15 +1268,7 @@ paths:
               schema:
                 type: array
                 items:
-                  type: object
-                  properties:
-                    category:
-                      $ref: '#/components/schemas/category'
-                    locked:
-                      type: integer
-                      description: If category is locked
-                    reason:
-                      $ref: '#/components/schemas/lockReason'
+                  $ref: '#/components/schemas/lockReason'
       operationId: getLockReason
       parameters:
         - $ref: '#/components/parameters/requiredVideoID'
@@ -1319,6 +1312,23 @@ components:
           $ref: '#/components/schemas/videoDuration'
         actionType:
           $ref: '#/components/schemas/actionType'
+        locked:
+          type: integer
+          enum:
+            - 0
+            - 1
+          description: If segment is locked
+        votes:
+          type: number
+          description: Votes on segment on the segment
+          minimum: -2
+          multipleOf: 1
+        userID:
+          $ref: '#/components/schemas/publicUserID'
+        description:
+          type: string
+          description: Unused
+          nullable: true
     segmentUUID:
       type: string
       title: segmentUUID
@@ -1428,11 +1438,33 @@ components:
         reason:
           type: string
           description: Specified reason for lock
+        service:
+          $ref: '#/components/schemas/services'
     lockReason:
-      type: string
+      type: object
       title: lockReason
       example: High Traffic Video
       description: VIP specified lock reason
+      properties:
+        category:
+          $ref: '#/components/schemas/category'
+        locked:
+          type: integer
+          description: Status of lockStatusk of category
+          enum:
+            - 0
+            - 1
+        reason:
+          type: string
+          description: VIP specified lock reason
+          example: All segments are correct
+          nullable: true
+        userID:
+          $ref: '#/components/schemas/publicUserID'
+        userName:
+          description: Username of locking VIP
+          type: string
+          nullable: true
     searchSegment:
       title: singleSearchSegment
       type: object
@@ -1693,7 +1725,7 @@ components:
             - preview
             - music_offtopic
             - poi_highlight
-      description: 'Array of categories - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
+      description: 'Array of categories - See https://wiki.sponsor.ajay.app/w/Types#Category'
     submitActionType:
       name: actionType
       in: query
@@ -1744,7 +1776,7 @@ components:
         enum:
           - YouTube
         default: YouTube
-      description: 'Service to target - See https://github.com/ajayyy/SponsorBlock/wiki/Types#service'
+      description: 'Service to target - See https://wiki.sponsor.ajay.app/w/Types#Service'
     UUID:
       name: UUID
       in: query
@@ -1790,6 +1822,7 @@ components:
           - preview
           - music_offtopic
           - poi_highlight
+          - filler
         pattern: '[a-z_]'
-      description: 'Segment Category - See https://github.com/ajayyy/SponsorBlock/wiki/Types#category'
+      description: 'Segment Category - See https://wiki.sponsor.ajay.app/w/Types#Category'
 security: []

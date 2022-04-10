@@ -1583,7 +1583,6 @@ components:
         uptime:
           type: integer
           description: Uptime in seconds
-          format: float
         commit:
           description: ''
           oneOf:
@@ -1605,12 +1604,10 @@ components:
           type: integer
           example: 1564088876715
           description: Unix (ms) time that request was recieved
-          format: float
         processTime:
           type: integer
           description: ms between startTime and sending response
           example: 1
-          format: float
     privateUserID:
       type: string
       title: privateUserID

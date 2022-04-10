@@ -1,7 +1,7 @@
 openapi: 3.0.4
 info:
   title: SponsorBlock API
-  version: 1.0.4
+  version: 1.0.5
   description: OpenAPI documentation of SponsorBlock API
   license:
     name: GPL v3.0

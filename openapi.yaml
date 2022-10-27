@@ -604,7 +604,7 @@ paths:
       parameters:
         - schema:
             type: string
-            pattern: '^[A-Fa-f0-9]{64}$'
+            pattern: '^[A-Fa-f0-9]{64,65}$'
           in: query
           name: UUID
           description: Target segment UUID

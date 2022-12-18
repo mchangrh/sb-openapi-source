@@ -1274,17 +1274,19 @@ paths:
         - $ref: '#/components/parameters/requiredVideoID'
         - schema:
             type: array
-            minItems: 0
-            uniqueItems: true
-            enum:
-              - sponsor
-              - selfpromo
-              - interaction
-              - intro
-              - outro
-              - preview
-              - music_offtopic
-              - poi_highlight
+            minItems: 1
+            items:
+              type: string
+              pattern: '[a-z_]'
+              enum:
+                - sponsor
+                - selfpromo
+                - interaction
+                - intro
+                - outro
+                - preview
+                - music_offtopic
+                - poi_highlight
           in: query
           name: category
           description: categories to get reasons for

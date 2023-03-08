@@ -1285,8 +1285,10 @@ paths:
                 - intro
                 - outro
                 - preview
+                - filler
                 - music_offtopic
                 - poi_highlight
+                - chapter
           in: query
           name: category
           description: categories to get reasons for
@@ -1408,6 +1410,8 @@ components:
       enum:
         - skip
         - mute
+        - poi
+        - chapter
       default: skip
       description: possible action types
     videoID:
